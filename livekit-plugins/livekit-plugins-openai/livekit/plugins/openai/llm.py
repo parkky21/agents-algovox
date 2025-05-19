@@ -690,7 +690,43 @@ class LLMStream(llm.LLMStream):
             self._tool_call_id = self._fnc_name = self._fnc_raw_arguments = None
             return call_chunk
 
+        import re
+
+        def strip_markdown(text: str) -> str:
+            if not text:
+                return ""
+             # Remove triple backticks (```), but keep inner content
+            text = re.sub(r'```+', '', text)
+
+            # Remove headers (e.g., ## Header)
+            text = re.sub(r'(^|\n)\s*#{1,6}\s*', r'\1', text)
+
+            # Remove bold and italic markers
+            text = re.sub(r'(\*\*|__)(.*?)\1', r'\2', text)  # Bold
+            text = re.sub(r'(\*|_)(.*?)\1', r'\2', text)     # Italic
+            text = re.sub(r'~~(.*?)~~', r'\1', text)         # Strikethrough
+
+            # Remove inline code markers
+            text = re.sub(r'`([^`]+)`', r'\1', text)
+
+            # Remove fenced code block markers but keep the code content
+            text = re.sub(r'```[\w]*\n([\s\S]*?)```', r'\1', text)
+
+            # Replace [text](link) with just text
+            text = re.sub(r'\[(.*?)\]\([^)]*\)', r'\1', text)
+
+            # Replace ![alt](image) with just alt text
+            text = re.sub(r'!\[(.*?)\]\([^)]*\)', r'\1', text)
+
+            # Do not collapse blank lines or indentation
+            return text
+
+
+        # Usage inside your LLM response processor:
+        clean_content = strip_markdown(delta.content or "") if delta.content else None
+        print("textby llm:",clean_content)
+
         return llm.ChatChunk(
             id=id,
-            delta=llm.ChoiceDelta(content=delta.content, role="assistant"),
+            delta=llm.ChoiceDelta(content=clean_content, role="assistant"),
         )
