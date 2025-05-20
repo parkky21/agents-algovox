@@ -721,11 +721,9 @@ class LLMStream(llm.LLMStream):
             # Do not collapse blank lines or indentation
             return text
 
-
         # Usage inside your LLM response processor:
         clean_content = strip_markdown(delta.content or "") if delta.content else None
-        print("textby llm:",clean_content)
-
+       
         return llm.ChatChunk(
             id=id,
             delta=llm.ChoiceDelta(content=clean_content, role="assistant"),
