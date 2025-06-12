@@ -764,12 +764,18 @@ class LLMStream(llm.LLMStream):
             self._tool_call_id = self._fnc_name = self._fnc_raw_arguments = None
             return call_chunk
 
+        delta.content = llm_utils.strip_thinking_tokens(delta.content, thinking)
+
+        if not delta.content:
+            return None
+        
         import re
 
+        # Function to strip markdown from the content
         def strip_markdown(text: str) -> str:
             if not text:
                 return ""
-             # Remove triple backticks (```), but keep inner content
+            # Remove triple backticks (```), but keep inner content
             text = re.sub(r'```+', '', text)
 
             # Remove headers (e.g., ## Header)
@@ -794,11 +800,12 @@ class LLMStream(llm.LLMStream):
 
             # Do not collapse blank lines or indentation
             return text
+        
+        if delta.content:
+            # Strip markdown formatting from the content
+            delta.content = strip_markdown(delta.content)
 
-        # Usage inside your LLM response processor:
-        clean_content = strip_markdown(delta.content or "") if delta.content else None
-       
         return llm.ChatChunk(
             id=id,
-            delta=llm.ChoiceDelta(content=clean_content, role="assistant"),
+            delta=llm.ChoiceDelta(content=delta.content, role="assistant"),
         )
