@@ -766,6 +766,42 @@ class LLMStream(llm.LLMStream):
 
         delta.content = llm_utils.strip_thinking_tokens(delta.content, thinking)
 
+        import re
+
+        # Function to strip markdown from the content
+        def strip_markdown(text: str) -> str:
+            if not text:
+                return ""
+            # Remove triple backticks (```), but keep inner content
+            text = re.sub(r'```+', '', text)
+
+            # Remove headers (e.g., ## Header)
+            text = re.sub(r'(^|\n)\s*#{1,6}\s*', r'\1', text)
+
+            # Remove bold and italic markers
+            text = re.sub(r'(\*\*|__)(.*?)\1', r'\2', text)  # Bold
+            text = re.sub(r'(\*|_)(.*?)\1', r'\2', text)     # Italic
+            text = re.sub(r'~~(.*?)~~', r'\1', text)         # Strikethrough
+
+            # Remove inline code markers
+            text = re.sub(r'`([^`]+)`', r'\1', text)
+
+            # Remove fenced code block markers but keep the code content
+            text = re.sub(r'```[\w]*\n([\s\S]*?)```', r'\1', text)
+
+            # Replace [text](link) with just text
+            text = re.sub(r'\[(.*?)\]\([^)]*\)', r'\1', text)
+
+            # Replace ![alt](image) with just alt text
+            text = re.sub(r'!\[(.*?)\]\([^)]*\)', r'\1', text)
+
+            # Do not collapse blank lines or indentation
+            return text
+        
+        if delta.content:
+            # Strip markdown formatting from the content
+            delta.content = strip_markdown(delta.content)
+
         if not delta.content:
             return None
 
